@@ -1,12 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-DES file encrypt/decrypt tool (interactive, CLI)
-Requirements: pip install pycryptodome
-- Encrypts a plaintext file to a ciphertext file using DES-CBC (PKCS#7 padding).
-- Decrypts a ciphertext file (IV is stored at the beginning) back to plaintext.
-Author: ChatGPT (GPT-5 Thinking)
-"""
+
 
 import sys
 import os
