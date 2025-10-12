@@ -28,7 +28,6 @@ def main():
             if identity not in ["student", "staff", "guest"]:
                 print("⚠️ 身分錯誤，請輸入 student/staff/guest")
                 continue
-            # 成交價與小計
             each = round(price * discount(cond))
             total = each * qty
             orders.append({
@@ -49,7 +48,6 @@ def main():
         print("無資料，程式結束。")
         return
 
-    # 取整單身份（最後一筆）
     identity = orders[-1]["身份"]
     coef = {"student": 0.97, "staff": 1.00, "guest": 1.05}[identity]
 
@@ -58,7 +56,6 @@ def main():
         print(f"{o['日期']} {o['書名']} 類別:{o['類別']} 定價:{o['定價']} 成色:{o['成色']} "
               f"數量:{o['數量']} 每本成交價:{o['每本成交價']} 小計:{o['小計']}")
 
-    # 統計
     total_lines = len(orders)
     total_books = sum(o["數量"] for o in orders)
     subtotal = sum(o["小計"] for o in orders)
@@ -67,7 +64,6 @@ def main():
     max_order = max(orders, key=lambda x: x["小計"])
     min_order = min(orders, key=lambda x: x["小計"])
 
-    # 類別統計
     cat_stat = {}
     for o in orders:
         cat = o["類別"]
