@@ -2,6 +2,7 @@ import threading
 import re
 import numpy as np
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import mplfinance as mpf
@@ -9,7 +10,14 @@ import tkinter as tk
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 
-from core import DataFetcher, Predictor, rsi, macd, Sounder, tf_tier, REFRESH_BY_TIER, TIMEFRAME_CHOICES
+# ✅ 讓 Matplotlib 正常顯示中文與負號（Windows）
+matplotlib.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'SimHei', 'Arial Unicode MS']
+matplotlib.rcParams['axes.unicode_minus'] = False
+
+from core import (
+    DataFetcher, Predictor, rsi, macd, Sounder,
+    tf_tier, REFRESH_BY_TIER, TIMEFRAME_CHOICES
+)
 
 
 class TradingApp:
@@ -25,10 +33,11 @@ class TradingApp:
         self.sounder = Sounder()
 
         # --- 狀態變數 ---
-        self.symbol_var = tk.StringVar(value="AAPL")
+        self.symbol_var = tk.StringVar(value="BTC/USDT")
         self.tf_var = tk.StringVar(value="1m")
-        self.horizon_var = tk.StringVar(value="3")
-        self.threshold_var = tk.DoubleVar(value=0.01)
+        self.horizon_var = tk.StringVar(value="3")      # 預測根數（使用者可輸入任意整數）
+        self.threshold_var = tk.DoubleVar(value=1)      # 以「百分比」輸入；1 = 1%
+        self.show_band_var = tk.BooleanVar(value=True)  # 顯示/隱藏預測區間
         self.df = pd.DataFrame()
         self.pred_df = pd.DataFrame()
         self.update_job = None
@@ -59,6 +68,12 @@ class TradingApp:
         ttk.Label(top, text="閾值(%)").pack(side=LEFT, padx=(10, 0))
         ttk.Entry(top, textvariable=self.threshold_var, width=6).pack(side=LEFT)
 
+        # ✅ 顯示/隱藏預測區間的切換
+        ttk.Checkbutton(
+            top, text="顯示預測區間", variable=self.show_band_var,
+            bootstyle=SUCCESS, command=self._draw_chart
+        ).pack(side=LEFT, padx=(10, 0))
+
         ttk.Button(top, text="查詢 / 開始", command=self.on_query).pack(side=LEFT, padx=10)
         self.lbl_src = ttk.Label(top, text="來源：-")
         self.lbl_src.pack(side=RIGHT)
@@ -73,16 +88,20 @@ class TradingApp:
         self.vola_var = tk.StringVar(value="—")
         self.pred_range_var = tk.StringVar(value="—")
 
-        ttk.Label(lf, text="即時價格：").grid(row=0, column=0)
-        ttk.Label(lf, textvariable=self.price_var, bootstyle=SUCCESS).grid(row=0, column=1)
-        ttk.Label(lf, text="預測價格：").grid(row=0, column=2)
-        ttk.Label(lf, textvariable=self.pred_var, bootstyle=PRIMARY).grid(row=0, column=3)
-        ttk.Label(lf, text="成交量：").grid(row=0, column=4)
-        ttk.Label(lf, textvariable=self.vol_var).grid(row=0, column=5)
-        ttk.Label(lf, text="波動率：").grid(row=0, column=6)
-        ttk.Label(lf, textvariable=self.vola_var).grid(row=0, column=7)
-        ttk.Label(lf, text="預測範圍：").grid(row=0, column=8)
-        ttk.Label(lf, textvariable=self.pred_range_var, bootstyle=INFO).grid(row=0, column=9)
+        ttk.Label(lf, text="即時價格：").grid(row=0, column=0, sticky=W, padx=(0, 4))
+        ttk.Label(lf, textvariable=self.price_var, bootstyle=SUCCESS).grid(row=0, column=1, sticky=W, padx=(0, 16))
+
+        ttk.Label(lf, text="預測價格：").grid(row=0, column=2, sticky=W, padx=(0, 4))
+        ttk.Label(lf, textvariable=self.pred_var, bootstyle=PRIMARY).grid(row=0, column=3, sticky=W, padx=(0, 16))
+
+        ttk.Label(lf, text="成交量：").grid(row=0, column=4, sticky=W, padx=(0, 4))
+        ttk.Label(lf, textvariable=self.vol_var).grid(row=0, column=5, sticky=W, padx=(0, 16))
+
+        ttk.Label(lf, text="波動率：").grid(row=0, column=6, sticky=W, padx=(0, 4))
+        ttk.Label(lf, textvariable=self.vola_var).grid(row=0, column=7, sticky=W, padx=(0, 16))
+
+        ttk.Label(lf, text="預測範圍：").grid(row=0, column=8, sticky=W, padx=(0, 4))
+        ttk.Label(lf, textvariable=self.pred_range_var, bootstyle=INFO).grid(row=0, column=9, sticky=W)
 
     def _build_chart(self):
         frm = ttk.Frame(self.root)
@@ -102,6 +121,13 @@ class TradingApp:
         tf = self.tf_var.get()
         if not sym:
             return
+        # 取消既有更新排程（避免多重循環）
+        if self.update_job:
+            try:
+                self.root.after_cancel(self.update_job)
+            except Exception:
+                pass
+            self.update_job = None
         threading.Thread(target=self._fetch_data, args=(sym, tf), daemon=True).start()
 
     def _fetch_data(self, symbol, tf):
@@ -132,28 +158,37 @@ class TradingApp:
     def _update_loop(self):
         sym = self.symbol_var.get().strip()
         tf = self.tf_var.get()
+
+        # 閾值（百分比 → 小數）
         try:
             th = max(0.0, min(float(self.threshold_var.get()) / 100.0, 1.0))
         except ValueError:
-            th = 0.01
+            th = 0.01  # fallback 1%
 
+        # 實時價格（ticker）或 fallback 隨機微變化
         new_price = self.fetcher.fetch_ticker_price(sym)
         if new_price is None:
             new_price = float(self.df["Close"].iloc[-1]) + np.random.normal(0, 0.1)
-        self.df.iloc[-1, self.df.columns.get_loc("Close")] = new_price
 
+        # 更新最後一根 close（保持 timeframe 解耦的即時變化）
+        if len(self.df) == 0:
+            self.df = pd.DataFrame({"Close": [new_price]}, index=[pd.Timestamp.utcnow()])
+        else:
+            self.df.iloc[-1, self.df.columns.get_loc("Close")] = new_price
+
+        # 重新預測與重畫
         self._recompute_pred()
         self._draw_chart()
         self._update_metrics()
 
+        # 提示音（自動偵測多/空突破）
         try:
             if len(self.pred_df) > 0:
-                pred = float(self.pred_df["yhat"].iloc[-1])
+                pred = float(self.pred_df.iloc[-1]["yhat"])
                 real = float(self.df["Close"].iloc[-1])
-                th = float(self.threshold_var.get()) / 100.0
                 if pred > real * (1 + th) or pred < real * (1 - th):
                     self.sounder.maybe_beep(True)
-        except:
+        except Exception:
             pass
 
         self._schedule_update()
@@ -164,8 +199,10 @@ class TradingApp:
     def _update_metrics(self):
         if len(self.df) > 0:
             self.price_var.set(f"{self.df['Close'].iloc[-1]:.4f}")
-        if len(self.pred_df) > 0:
+        if len(self.pred_df) > 0 and "yhat" in self.pred_df.columns:
             self.pred_var.set(f"{self.pred_df['yhat'].iloc[-1]:.4f}")
+        else:
+            self.pred_var.set("—")
 
         if "Volume" in self.df.columns and len(self.df) > 1:
             self.vol_var.set(f"{int(self.df['Volume'].tail(10).mean()):,}")
@@ -179,60 +216,65 @@ class TradingApp:
             self.vola_var.set("—")
 
     def _draw_chart(self):
-            """繪製預測線（上）與即時價格線（下）＋閾值提示線"""
-            for ax in self.ax_main:
-                ax.clear()
+        """繪製：上方 AI 預測（含區間帶 + 閾值線）、下方 即時價格線"""
+        for ax in self.ax_main:
+            ax.clear()
 
-            df_to_plot = self.df.tail(300)
-            close = df_to_plot["Close"]
+        df_to_plot = self.df.tail(300)
+        close = df_to_plot["Close"] if "Close" in df_to_plot.columns else pd.Series(dtype=float)
 
-            # 取最後即時價與閾值
-            if len(self.df) > 0:
-                real = float(self.df["Close"].iloc[-1])
-            else:
-                real = 0.0
-            th = float(self.threshold_var.get()) / 100.0
+        # 即時價與閾值
+        real = float(self.df["Close"].iloc[-1]) if len(self.df) > 0 else 0.0
+        th = float(self.threshold_var.get()) / 100.0
+        upper_line = real * (1 + th)
+        lower_line = real * (1 - th)
 
-            upper_line = real * (1 + th)
-            lower_line = real * (1 - th)
+        # --- 上方圖：AI 預測 + 區間 + 閾值 ---
+        self.ax_main[0].set_title("AI 預測與閾值範圍", fontsize=12, pad=8)
+        self.ax_main[0].set_ylabel("預測價格")
+        self.ax_main[0].grid(True, linestyle="--", alpha=0.3)
 
-            # --- 上方圖：預測線 + 閾值線 ---
-            self.ax_main[0].set_title("AI 預測與閾值範圍", fontsize=11, pad=8)
-            self.ax_main[0].set_ylabel("預測價格")
-            self.ax_main[0].grid(True, linestyle="--", alpha=0.3)
+        if len(self.pred_df) > 0:
+            # 把預測拼接到歷史尾端（前段用 NaN 補齊，以對齊 X 軸）
+            base_index = df_to_plot.index
+            yhat_full = pd.concat([pd.Series(np.nan, index=base_index), self.pred_df.get("yhat", pd.Series(dtype=float))])
 
-            if len(self.pred_df) > 0:
-                pred_concat = pd.concat([
-                    pd.Series(np.nan, index=df_to_plot.index),
-                    self.pred_df["yhat"]
-                ])
-                self.ax_main[0].plot(
-                     pred_concat.index,
-                     pred_concat.values,
-                     color="orange",
-                     linewidth=1.6,
-                     label="AI 預測線"
-                )
-
-            # 閾值提示線（綠上紅下）
-            self.ax_main[0].axhline(upper_line, color="lime", linestyle="--", linewidth=1, alpha=0.7, label=f"+{th*100:.1f}% 閾值線（多頭）")
-            self.ax_main[0].axhline(lower_line, color="red", linestyle="--", linewidth=1, alpha=0.7, label=f"-{th*100:.1f}% 閾值線（空頭）")
-
-            # --- 下方圖：即時價格 ---
-            self.ax_main[1].set_ylabel("即時價格")
-            self.ax_main[1].grid(True, linestyle="--", alpha=0.3)
-            self.ax_main[1].plot(
-                 close.index,
-                 close.values,
-                 color="deepskyblue",
-                 linewidth=1.2,
-                 label="即時價格線"
+            self.ax_main[0].plot(
+                yhat_full.index, yhat_full.values,
+                color="orange", linewidth=1.8, label="AI 預測線"
             )
 
-            self.ax_main[0].legend(loc="upper left")
-            self.ax_main[1].legend(loc="upper left")
-            self.canvas.draw()
+            # ✅ 顯示預測區間（上/下界 + 灰色填滿）
+            if self.show_band_var.get() and "yhat_upper" in self.pred_df.columns and "yhat_lower" in self.pred_df.columns:
+                up_full = pd.concat([pd.Series(np.nan, index=base_index), self.pred_df["yhat_upper"]])
+                low_full = pd.concat([pd.Series(np.nan, index=base_index), self.pred_df["yhat_lower"]])
 
+                # 灰色虛線（上/下界）
+                self.ax_main[0].plot(up_full.index, up_full.values, color="gray", linestyle="--", linewidth=1, alpha=0.9, label="預測上界")
+                self.ax_main[0].plot(low_full.index, low_full.values, color="gray", linestyle="--", linewidth=1, alpha=0.9, label="預測下界")
+
+                # 區間帶填色（半透明）
+                self.ax_main[0].fill_between(
+                    up_full.index, low_full.values, up_full.values,
+                    color="gray", alpha=0.12, step=None
+                )
+
+        # 閾值提示線（綠上紅下）
+        self.ax_main[0].axhline(upper_line, color="lime", linestyle="--", linewidth=1, alpha=0.75, label=f"+{th*100:.1f}% 閾值線（多頭）")
+        self.ax_main[0].axhline(lower_line, color="red", linestyle="--", linewidth=1, alpha=0.75, label=f"-{th*100:.1f}% 閾值線（空頭）")
+
+        # --- 下方圖：即時價格 ---
+        self.ax_main[1].set_ylabel("即時價格")
+        self.ax_main[1].grid(True, linestyle="--", alpha=0.3)
+        if len(close) > 0:
+            self.ax_main[1].plot(
+                close.index, close.values,
+                color="deepskyblue", linewidth=1.2, label="即時價格線"
+            )
+
+        self.ax_main[0].legend(loc="upper left")
+        self.ax_main[1].legend(loc="upper left")
+        self.canvas.draw()
 
     def _update_pred_range_label(self):
         tf = self.tf_var.get()
@@ -249,12 +291,5 @@ class TradingApp:
 
         num, unit = int(match.group(1)), match.group(2)
         total = num * steps
-        unit_label = {
-            "s": "秒",
-            "m": "分鐘",
-            "h": "小時",
-            "d": "天",
-            "w": "週"
-        }.get(unit, "—")
-
+        unit_label = {"s": "秒", "m": "分鐘", "h": "小時", "d": "天", "w": "週"}.get(unit, "—")
         self.pred_range_var.set(f"{total} {unit_label}（基於 {tf}）")

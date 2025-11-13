@@ -36,13 +36,12 @@ class Predictor:
         return "min", 1, "1min"
 
     # ==========================================================
-    # 🔮 預測主邏輯
+    # 🔮 AI 預測主邏輯（含預測區間）
     # ==========================================================
     def forecast(self, df: pd.DataFrame, steps: int = 5, tf: str = "1m") -> pd.DataFrame:
         if df is None or df.empty:
-            return pd.DataFrame(columns=["yhat"])
+            return pd.DataFrame(columns=["yhat", "yhat_lower", "yhat_upper"])
 
-        # --- 時間解析 ---
         unit_name, val, pandas_freq = self._parse_tf(tf)
         print(f"[Predictor] Timeframe={tf} → unit={unit_name}, step={val}, pandas_freq={pandas_freq}")
 
@@ -51,33 +50,44 @@ class Predictor:
         # ======================================================
         if self.use_prophet:
             try:
-                # 準備 Prophet 格式資料
-                hist = df[["Close"]].copy()
-                hist = hist.reset_index()
-                hist.columns = ["ds", "y"]  # Prophet 需要這兩個欄位
-                hist = hist.tail(300)
+                hist = df[["Close"]].copy().reset_index()
+                hist.columns = ["ds", "y"]
+                hist = hist.tail(1000)
 
+                # log 平滑
+                hist["y"] = np.log(hist["y"].replace(0, np.nan)).fillna(method="ffill")
+
+                is_short_tf = any(tf.endswith(x) for x in ["s", "m"])
                 m = Prophet(
+                    seasonality_mode="additive",
                     daily_seasonality=True,
                     weekly_seasonality=True,
-                    yearly_seasonality=True,
-                    changepoint_prior_scale=0.3
+                    yearly_seasonality=False,
+                    changepoint_prior_scale=0.5,
+                    n_changepoints=80,
+                    interval_width=0.5
                 )
                 m.fit(hist)
 
-                # 產生未來時間
                 last_ts = df.index[-1]
                 future_start = last_ts + pd.Timedelta(val, unit=unit_name)
                 future = pd.date_range(start=future_start, periods=steps, freq=pandas_freq)
                 future_df = pd.DataFrame({"ds": future})
 
-                fcst = m.predict(future_df)[["ds", "yhat"]]
+                fcst = m.predict(future_df)[["ds", "yhat", "yhat_lower", "yhat_upper"]]
+                fcst[["yhat", "yhat_lower", "yhat_upper"]] = np.exp(fcst[["yhat", "yhat_lower", "yhat_upper"]])
                 fcst = fcst.set_index("ds")
 
-                # 限制異常值範圍（避免 Prophet 預測爆炸）
+                # 智能波動範圍限制
                 last_price = df["Close"].iloc[-1]
-                fcst["yhat"] = np.clip(fcst["yhat"], last_price * 0.5, last_price * 1.5)
-                return fcst[["yhat"]]
+                vol = np.std(df["Close"].pct_change().dropna()) * 100
+                clamp = max(0.05, min(0.25, vol / 5))
+
+                fcst["yhat"] = np.clip(fcst["yhat"], last_price * (1 - clamp), last_price * (1 + clamp))
+                fcst["yhat_lower"] = np.clip(fcst["yhat_lower"], last_price * (1 - clamp * 1.5), last_price * (1 + clamp))
+                fcst["yhat_upper"] = np.clip(fcst["yhat_upper"], last_price * (1 - clamp), last_price * (1 + clamp * 1.5))
+
+                return fcst[["yhat", "yhat_lower", "yhat_upper"]]
             except Exception as e:
                 print(f"[Predictor] Prophet failed: {e}")
 
@@ -88,4 +98,8 @@ class Predictor:
         y = float(tail.mean()) if len(tail) else float(df["Close"].iloc[-1])
         last_ts = df.index[-1] if len(df) else datetime.now()
         idx = pd.date_range(start=last_ts + pd.Timedelta(val, unit=unit_name), periods=steps, freq=pandas_freq)
-        return pd.DataFrame({"yhat": [y] * steps}, index=idx)
+        return pd.DataFrame({
+            "yhat": [y] * steps,
+            "yhat_lower": [y * 0.98] * steps,
+            "yhat_upper": [y * 1.02] * steps
+        }, index=idx)
