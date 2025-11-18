@@ -57,7 +57,7 @@ class RentalSystem:
             messagebox.showwarning("錯誤", "請輸入學生姓名")
             return
 
-        if dormitory not in ["感恩", "惜福", "築夢", "登峰學苑"]:
+        if dormitory not in ["感恩學苑", "惜福學苑", "築夢學苑", "登峰學苑"]:
             messagebox.showwarning("錯誤", "請選擇宿舍")
             return
 
@@ -165,7 +165,7 @@ class RentalSystem:
         tk.Label(form_frame, text="隸屬宿舍：").grid(row=1, column=0, sticky="w", pady=5)
         self.combo_dorm = ttk.Combobox(
             form_frame,
-            values=["感恩", "惜福", "築夢", "登峰學苑"],
+            values=["感恩學苑", "惜福學苑", "築夢學苑", "登峰學苑"],
             state="readonly",
             width=18,
         )
