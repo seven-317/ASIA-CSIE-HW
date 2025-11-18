@@ -269,7 +269,7 @@ class RentalSystem:
     def clear_form(self):
         self.entry_name.delete(0, tk.END)
         self.entry_hours.delete(0, tk.END)
-        self.combo_dorm.set("感恩")
+        self.combo_dorm.set("感恩學苑")
         self.combo_machine.set("1")
 
     def schedule_auto_refresh(self):
