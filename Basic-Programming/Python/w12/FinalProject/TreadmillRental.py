@@ -170,7 +170,7 @@ class RentalSystem:
             width=18,
         )
         self.combo_dorm.grid(row=1, column=1, sticky="w", pady=5)
-        self.combo_dorm.set("感恩")
+        self.combo_dorm.set("感恩學苑")
 
         # 租借時數
         tk.Label(form_frame, text="租借時數（小時）：").grid(row=2, column=0, sticky="w", pady=5)
