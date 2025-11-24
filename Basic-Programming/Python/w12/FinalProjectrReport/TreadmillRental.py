@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 CSV_FILE = "treadmill_rentals.csv"
 DATETIME_FORMAT = "%Y-%m-%d %H:%M"
 
-# 宿舍清單
 DORMS = ["感恩", "惜福", "築夢", "登峰學苑"]
 
 MACHINE_LAYOUT = {
@@ -28,7 +27,6 @@ class RentalSystem:
         self.root.title("宿舍跑步機租借系統")
         self.root.state('zoomed')
 
-        # 右側機台 label 會放在這裡：machine_id -> Label
         self.machine_labels = {}
 
         self.ensure_csv_exists()
@@ -36,7 +34,6 @@ class RentalSystem:
         self.update_status()
         self.schedule_auto_refresh()
 
-    # ---------------- CSV 相關 ----------------
     def ensure_csv_exists(self):
         if not os.path.exists(CSV_FILE):
             with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
@@ -63,7 +60,6 @@ class RentalSystem:
                 rentals.append(row)
         return rentals
 
-    # ---------------- 租借邏輯 ----------------
     def submit_rental(self):
         student_name = self.entry_name.get().strip()
         student_dorm = self.combo_dorm.get().strip()
@@ -100,7 +96,7 @@ class RentalSystem:
         self.append_rental_to_csv(
             machine_id=machine_id,
             student_name=student_name,
-            dormitory=student_dorm,  # 這裡記錄的是「學生宿舍」
+            dormitory=student_dorm,
             hours=hours,
             start_time=start_time_str,
             end_time=end_time_str,
@@ -155,7 +151,7 @@ class RentalSystem:
         messagebox.showinfo("完成", "已清空所有紀錄。")
         self.update_status()
 
-    # ---------------- UI 建立 ----------------
+    # ---------------- UI ----------------
     def create_widgets(self):
         main_frame = tk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -170,12 +166,10 @@ class RentalSystem:
         form_frame = tk.LabelFrame(parent, text="租借表單", padx=10, pady=10)
         form_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
-        # 學生姓名
         tk.Label(form_frame, text="學生姓名：").grid(row=0, column=0, sticky="w", pady=5)
         self.entry_name = tk.Entry(form_frame, width=20)
         self.entry_name.grid(row=0, column=1, sticky="w", pady=5)
 
-        # 隸屬宿舍（學生住宿棟）
         tk.Label(form_frame, text="學生宿舍：").grid(row=1, column=0, sticky="w", pady=5)
         self.combo_dorm = ttk.Combobox(
             form_frame,
@@ -186,12 +180,10 @@ class RentalSystem:
         self.combo_dorm.grid(row=1, column=1, sticky="w", pady=5)
         self.combo_dorm.set(DORMS[0])
 
-        # 租借時數
         tk.Label(form_frame, text="租借時數（小時）：").grid(row=2, column=0, sticky="w", pady=5)
         self.entry_hours = tk.Entry(form_frame, width=20)
         self.entry_hours.grid(row=2, column=1, sticky="w", pady=5)
 
-        # 跑步機編號（1~8）
         tk.Label(form_frame, text="選擇跑步機（ID）：").grid(row=3, column=0, sticky="w", pady=5)
         self.combo_machine = ttk.Combobox(
             form_frame,
@@ -202,7 +194,6 @@ class RentalSystem:
         self.combo_machine.grid(row=3, column=1, sticky="w", pady=5)
         self.combo_machine.set("1")
 
-        # 按鈕列
         btn_frame = tk.Frame(form_frame)
         btn_frame.grid(row=4, column=0, columnspan=2, pady=(15, 5))
 
@@ -219,13 +210,11 @@ class RentalSystem:
         status_frame = tk.LabelFrame(parent, text="各宿舍跑步機使用狀態", padx=10, pady=10)
         status_frame.grid(row=0, column=1, sticky="nsew")
 
-        # 2×2 宿舍區塊
         for r in range(2):
             status_frame.rowconfigure(r, weight=1)
         for c in range(2):
             status_frame.columnconfigure(c, weight=1)
 
-        # 建立宿舍區塊：感恩 / 惜福 / 築夢 / 登峰學苑
         self.dorm_frames = {}
 
         for idx, dorm in enumerate(DORMS):
@@ -235,7 +224,6 @@ class RentalSystem:
             dorm_frame.grid(row=row, column=col, sticky="nsew", padx=5, pady=5)
             self.dorm_frames[dorm] = dorm_frame
 
-        # 在各宿舍區塊內建立對應的 2 台跑步機卡片
         for machine_id in range(1, 9):
             dorm_name, local_no = MACHINE_LAYOUT[machine_id]
             dorm_frame = self.dorm_frames[dorm_name]
@@ -258,9 +246,8 @@ class RentalSystem:
 
             self.machine_labels[machine_id] = label
 
-    # ---------------- UI 更新 ----------------
+    # ---------------- UI Refresh ----------------
     def update_status(self):
-        # 針對每一台跑步機（1~8）刷新狀態
         for machine_id, label in self.machine_labels.items():
             self.update_machine_status(machine_id, label)
 
@@ -289,7 +276,7 @@ class RentalSystem:
             return
 
         student_name = rental["student_name"]
-        student_dorm = rental["dormitory"]  # 這是「學生宿舍」
+        student_dorm = rental["dormitory"]
         hours = rental["hours"]
         start_time_str = rental["start_time"]
         end_time_str = rental["end_time"]
