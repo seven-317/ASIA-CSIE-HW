@@ -7,15 +7,15 @@ from datetime import datetime, timedelta
 CSV_FILE = "treadmill_rentals.csv"
 DATETIME_FORMAT = "%Y-%m-%d %H:%M"
 
-DORMS = ["感恩", "惜福", "築夢", "登峰學苑"]
+DORMS = ["感恩學苑", "惜福學苑", "築夢學苑", "登峰學苑"]
 
 MACHINE_LAYOUT = {
-    1: ("感恩", 1),
-    2: ("感恩", 2),
-    3: ("惜福", 1),
-    4: ("惜福", 2),
-    5: ("築夢", 1),
-    6: ("築夢", 2),
+    1: ("感恩學苑", 1),
+    2: ("感恩學苑", 2),
+    3: ("惜福學苑", 1),
+    4: ("惜福學苑", 2),
+    5: ("築夢學苑", 1),
+    6: ("築夢學苑", 2),
     7: ("登峰學苑", 1),
     8: ("登峰學苑", 2),
 }
@@ -31,9 +31,11 @@ class RentalSystem:
 
         self.ensure_csv_exists()
         self.create_widgets()
+        self.cleanup_expired_records()
         self.update_status()
         self.schedule_auto_refresh()
 
+    # ---------------- CSV ----------------
     def ensure_csv_exists(self):
         if not os.path.exists(CSV_FILE):
             with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
@@ -60,11 +62,41 @@ class RentalSystem:
                 rentals.append(row)
         return rentals
 
+    def cleanup_expired_records(self):
+        now = datetime.now()
+        valid_rows = []
+
+        if not os.path.exists(CSV_FILE):
+            return
+
+        with open(CSV_FILE, "r", newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    end = datetime.strptime(row["end_time"], DATETIME_FORMAT)
+                    if end > now:
+                        valid_rows.append(row)
+                except:
+                    continue
+
+        with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["machine_id", "student_name", "dormitory", "hours", "start_time", "end_time"])
+            for r in valid_rows:
+                writer.writerow([
+                    r["machine_id"], r["student_name"], r["dormitory"],
+                    r["hours"], r["start_time"], r["end_time"]
+                ])
+
+    # ---------------------------------------------------------
+
     def submit_rental(self):
         student_name = self.entry_name.get().strip()
         student_dorm = self.combo_dorm.get().strip()
         hours_text = self.entry_hours.get().strip()
         machine_id_text = self.combo_machine.get().strip()
+
+        self.cleanup_expired_records()
 
         if not student_name:
             messagebox.showwarning("錯誤", "請輸入學生姓名")
@@ -82,11 +114,19 @@ class RentalSystem:
             messagebox.showwarning("錯誤", "租借時數請輸入大於 0 的整數")
             return
 
-        if machine_id_text not in [str(i) for i in range(1, 9)]:
+        if machine_id_text not in [str(i) for i in range(1, 8 + 1)]:
             messagebox.showwarning("錯誤", "請選擇正確的跑步機編號（1~8）")
             return
 
         machine_id = int(machine_id_text)
+
+        current_rental = self.get_current_rental_for_machine(machine_id)
+        if current_rental is not None:
+            messagebox.showwarning(
+                "錯誤",
+                f"ID {machine_id} 目前有人使用中，無法重複租借。"
+            )
+            return
 
         now = datetime.now().replace(second=0, microsecond=0)
         start_time_str = now.strftime(DATETIME_FORMAT)
@@ -116,26 +156,25 @@ class RentalSystem:
     def get_current_rental_for_machine(self, machine_id: int):
         rentals = self.load_all_rentals()
         now = datetime.now()
-        active_rentals = []
+        active = []
 
         for r in rentals:
             if r["machine_id"] != str(machine_id):
                 continue
-
             try:
                 start = datetime.strptime(r["start_time"], DATETIME_FORMAT)
                 end = datetime.strptime(r["end_time"], DATETIME_FORMAT)
-            except Exception:
+            except:
                 continue
 
             if end > now:
-                active_rentals.append((start, end, r))
+                active.append((start, end, r))
 
-        if not active_rentals:
+        if not active:
             return None
 
-        active_rentals.sort(key=lambda x: x[0], reverse=True)
-        return active_rentals[0][2]
+        active.sort(key=lambda x: x[0], reverse=True)
+        return active[0][2]
 
     def clear_all_records(self):
         ans = messagebox.askyesno("確認", "確定要清空所有租借紀錄嗎？此動作無法復原。")
@@ -170,7 +209,7 @@ class RentalSystem:
         self.entry_name = tk.Entry(form_frame, width=20)
         self.entry_name.grid(row=0, column=1, sticky="w", pady=5)
 
-        tk.Label(form_frame, text="學生宿舍：").grid(row=1, column=0, sticky="w", pady=5)
+        tk.Label(form_frame, text="學生所屬宿舍：").grid(row=1, column=0, sticky="w", pady=5)
         self.combo_dorm = ttk.Combobox(
             form_frame,
             values=DORMS,
@@ -246,8 +285,9 @@ class RentalSystem:
 
             self.machine_labels[machine_id] = label
 
-    # ---------------- UI Refresh ----------------
     def update_status(self):
+        self.cleanup_expired_records()
+
         for machine_id, label in self.machine_labels.items():
             self.update_machine_status(machine_id, label)
 
@@ -290,7 +330,7 @@ class RentalSystem:
             f"機台位置：{dorm_name}棟 {local_no} 號（ID {machine_id}）\n"
             f"目前狀態：使用中\n"
             f"學生姓名：{student_name}\n"
-            f"學生宿舍：{student_dorm}\n"
+            f"學生所屬宿舍：{student_dorm}\n"
             f"租借時數：{hours} 小時\n"
             f"開始時間：{start_time_str}\n"
             f"結束時間：{end_time_str}\n"
@@ -307,7 +347,6 @@ class RentalSystem:
 
     def schedule_auto_refresh(self):
         self.update_status()
-        # 每 60 秒自動更新一次倒數
         self.root.after(60000, self.schedule_auto_refresh)
 
 
