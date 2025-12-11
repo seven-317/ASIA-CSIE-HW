@@ -1,1 +1,1 @@
-This column collects the assignments and test projects completed by Tang, a second-year student in Class B of the Department of Information Engineering at Asia University, during the course.
+This column collects the assignments and test projects completed by Tang, a second-year student in Class B of the Department of Computer Science Information Engineering at Asia University, during the course.
