@@ -325,7 +325,6 @@ class MusicPlayer:
 
         self.root.after(500, self.update_progress)
 
-
 root = tk.Tk()
 MusicPlayer(root)
 root.mainloop()
