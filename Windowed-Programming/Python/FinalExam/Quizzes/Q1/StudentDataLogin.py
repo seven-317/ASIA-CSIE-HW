@@ -8,7 +8,6 @@ def is_valid_email(s: str) -> bool:
     user, _, domain = s.partition("@")
     if not user or not domain:
         return False
-    # 簡易判斷：至少包含一個點，且不以點開頭/結尾
     if "." not in domain or domain.startswith(".") or domain.endswith("."):
         return False
     return True
