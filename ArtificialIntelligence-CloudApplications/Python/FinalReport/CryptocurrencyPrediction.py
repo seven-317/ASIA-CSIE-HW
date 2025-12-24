@@ -1,4 +1,4 @@
-from gui.trading_app import TradingApp
+from gui.CryptocurrencyPredictionGUI import TradingApp
 import ttkbootstrap as ttk
 import matplotlib
 import matplotlib.pyplot as plt
