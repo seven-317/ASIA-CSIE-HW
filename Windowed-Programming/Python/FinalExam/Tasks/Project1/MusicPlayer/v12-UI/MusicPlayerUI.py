@@ -3,8 +3,6 @@ from tkinter import filedialog
 import pygame
 import os
 
-
-# ===== Spotify Dark Theme =====
 BG_MAIN = "#121212"
 BG_SECTION = "#181818"
 TEXT_MAIN = "#FFFFFF"
@@ -23,7 +21,6 @@ class MusicPlayer:
         self.root.resizable(False, False)
         self.root.configure(bg=BG_MAIN)
 
-        # ===== 播放狀態 =====
         self.playlist = []
         self.current_song_idx = 0
         self.seek_offset_sec = 0
@@ -32,7 +29,6 @@ class MusicPlayer:
         self.was_playing = False
         self.song_length_sec = 0
 
-        # ===== 跑馬燈狀態 =====
         self.full_song_title = ""
         self.marquee_index = 0
         self.marquee_job = None
@@ -42,16 +38,12 @@ class MusicPlayer:
         pygame.mixer.init()
         pygame.mixer.music.set_volume(0.5)
 
-        # ================= Layout =================
-
         main_frame = tk.Frame(root, bg=BG_MAIN)
         main_frame.pack(fill="both", expand=True)
 
-        # 上半部
         top_frame = tk.Frame(main_frame, bg=BG_MAIN)
         top_frame.pack(fill="both", expand=True)
 
-        # Sidebar
         sidebar_frame = tk.Frame(top_frame, width=200, bg=BG_SECTION)
         sidebar_frame.pack(side="left", fill="y")
 
@@ -68,11 +60,9 @@ class MusicPlayer:
         self.song_listbox.pack(fill="both", expand=True, padx=5, pady=5)
         self.song_listbox.bind("<<ListboxSelect>>", self.on_song_select)
 
-        # Content
         content_frame = tk.Frame(top_frame, bg=BG_MAIN)
         content_frame.pack(side="left", fill="both", expand=True)
 
-        # 歌名（跑馬燈）
         self.song_title_var = tk.StringVar(value="")
         self.song_title_label = tk.Label(
             content_frame,
@@ -101,8 +91,6 @@ class MusicPlayer:
             font=FONT
         )
         self.play_state_label.pack()
-
-        # ================= Bottom Player =================
 
         player_frame = tk.Frame(main_frame, bg=BG_SECTION)
         player_frame.pack(fill="x")
@@ -137,7 +125,6 @@ class MusicPlayer:
         self.repeat_button = btn("Repeat", self.toggle_repeat_mode, wide=True)
         self.repeat_button.pack(side="left", padx=6)
 
-        # Progress
         self.progress_var = tk.IntVar(value=0)
         self.progress_scale = tk.Scale(
             player_frame,
@@ -157,7 +144,6 @@ class MusicPlayer:
         self.progress_scale.bind("<ButtonRelease-1>", self.on_progress_release)
         self.is_dragging_progress = False
 
-        # Volume
         self.volume_scale = tk.Scale(
             player_frame,
             from_=0,
@@ -186,8 +172,6 @@ class MusicPlayer:
         ).pack(pady=5)
 
         self.update_progress()
-
-    # ================= 播放核心 =================
 
     def load_song(self, path):
         pygame.mixer.music.stop()
@@ -254,8 +238,6 @@ class MusicPlayer:
             text=["Repeat", "Repeat One", "Repeat All"][self.repeat_mode]
         )
 
-    # ================= 跑馬燈 =================
-
     def set_song_title(self, title):
         self.full_song_title = title
         self.song_title_var.set(title)
@@ -285,8 +267,6 @@ class MusicPlayer:
             self.marquee_job = None
         self.marquee_active = False
 
-    # ================= List =================
-
     def add_song(self):
         path = filedialog.askopenfilename(filetypes=[("MP3 files", "*.mp3")])
         if path:
@@ -302,8 +282,6 @@ class MusicPlayer:
         for i in range(self.song_listbox.size()):
             self.song_listbox.itemconfig(i, fg=TEXT_MAIN)
         self.song_listbox.itemconfig(self.current_song_idx, fg=ACCENT)
-
-    # ================= Progress =================
 
     def set_play_state(self, state):
         self.play_state_label.config(text=state)

@@ -3,8 +3,6 @@ from tkinter import filedialog
 import pygame
 import os
 
-
-# ===== Spotify Dark Theme =====
 BG_MAIN = "#121212"
 BG_SECTION = "#181818"
 TEXT_MAIN = "#FFFFFF"
@@ -22,7 +20,6 @@ class MusicPlayer:
         self.root.resizable(False, False)
         self.root.configure(bg=BG_MAIN)
 
-        # ===== 狀態 =====
         self.playlist = []
         self.current_song_idx = 0
         self.seek_offset_sec = 0
@@ -34,16 +31,12 @@ class MusicPlayer:
         pygame.mixer.init()
         pygame.mixer.music.set_volume(0.5)
 
-        # ================= Layout =================
-
         main_frame = tk.Frame(root, bg=BG_MAIN)
         main_frame.pack(fill="both", expand=True)
 
-        # 上半部
         top_frame = tk.Frame(main_frame, bg=BG_MAIN)
         top_frame.pack(fill="both", expand=True)
 
-        # Sidebar
         sidebar_frame = tk.Frame(top_frame, width=200, bg=BG_SECTION)
         sidebar_frame.pack(side="left", fill="y")
 
@@ -60,7 +53,6 @@ class MusicPlayer:
         self.song_listbox.pack(fill="both", expand=True, padx=5, pady=5)
         self.song_listbox.bind("<<ListboxSelect>>", self.on_song_select)
 
-        # Content
         content_frame = tk.Frame(top_frame, bg=BG_MAIN)
         content_frame.pack(side="left", fill="both", expand=True)
 
@@ -72,8 +64,6 @@ class MusicPlayer:
             font=FONT_LG
         )
         self.current_time_label.pack(pady=40)
-
-        # ================= Bottom Player =================
 
         player_frame = tk.Frame(main_frame, bg=BG_SECTION)
         player_frame.pack(fill="x")
@@ -107,7 +97,6 @@ class MusicPlayer:
         self.repeat_button = btn("Repeat", self.toggle_repeat_mode)
         self.repeat_button.pack(side="left", padx=6)
 
-        # Progress
         self.progress_var = tk.IntVar(value=0)
         self.progress_scale = tk.Scale(
             player_frame,
@@ -127,7 +116,6 @@ class MusicPlayer:
         self.progress_scale.bind("<ButtonRelease-1>", self.on_progress_release)
         self.is_dragging_progress = False
 
-        # Volume
         self.volume_scale = tk.Scale(
             player_frame,
             from_=0,
@@ -144,7 +132,6 @@ class MusicPlayer:
         self.volume_scale.set(50)
         self.volume_scale.pack(fill="x", padx=10)
 
-        # Add Song
         tk.Button(
             player_frame,
             text="Add Song",
@@ -157,8 +144,6 @@ class MusicPlayer:
         ).pack(pady=5)
 
         self.update_progress()
-
-    # ================= Logic（完全沿用） =================
 
     def load_song(self, path):
         pygame.mixer.music.stop()

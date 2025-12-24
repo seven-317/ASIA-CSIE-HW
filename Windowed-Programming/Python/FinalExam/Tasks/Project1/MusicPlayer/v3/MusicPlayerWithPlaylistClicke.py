@@ -21,16 +21,14 @@ class MusicPlayer:
         pygame.mixer.music.set_volume(self.volume / 100)
 
         self.seek_offset_sec = 0
-        self.is_paused = False  # ★ NEW
+        self.is_paused = False
 
-        # 歌曲清單
         self.song_listbox = tk.Listbox(root)
         self.song_listbox.pack(pady=5)
         self.song_listbox.bind("<<ListboxSelect>>", self.on_song_select)
 
         tk.Button(root, text="Play", command=self.play_music).pack()
 
-        # 暫停 / 繼續（同一顆）
         self.pause_button = tk.Button(
             root, text="Pause", command=self.toggle_pause
         )
@@ -66,7 +64,6 @@ class MusicPlayer:
         self.update_progress()
 
     def play_music(self):
-        """從頭播放目前選取的歌曲"""
         if self.playlist:
             pygame.mixer.music.load(self.playlist[self.current_song_idx])
             pygame.mixer.music.play()
@@ -76,7 +73,6 @@ class MusicPlayer:
             self.pause_button.config(text="Pause")
 
     def toggle_pause(self):
-        """暫停 / 繼續 播放"""
         if not pygame.mixer.music.get_busy():
             return
 

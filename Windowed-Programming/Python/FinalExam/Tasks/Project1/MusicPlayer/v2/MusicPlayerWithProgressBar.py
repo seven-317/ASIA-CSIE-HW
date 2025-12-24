@@ -20,7 +20,6 @@ class MusicPlayer:
         self.volume = 50
         pygame.mixer.music.set_volume(self.volume / 100)
 
-        # 記錄 seek 偏移（秒）
         self.seek_offset_sec = 0
 
         self.song_listbox = tk.Listbox(root)
@@ -90,7 +89,6 @@ class MusicPlayer:
             target_sec = self.progress_var.get()
             self.seek_offset_sec = target_sec
 
-            # ★ 關鍵修正：先 stop 再 play
             pygame.mixer.music.stop()
             pygame.mixer.music.play(start=target_sec)
 

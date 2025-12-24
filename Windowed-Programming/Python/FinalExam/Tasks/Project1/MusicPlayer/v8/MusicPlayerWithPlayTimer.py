@@ -27,7 +27,7 @@ class MusicPlayer:
         self.repeat_mode = 0
         self.was_playing = False
 
-        # --- UI ---
+        # ---------------- UI ----------------
 
         self.song_listbox = tk.Listbox(root)
         self.song_listbox.pack(pady=5)
@@ -51,7 +51,6 @@ class MusicPlayer:
 
         tk.Button(root, text="Add Song", command=self.add_song).pack(pady=5)
 
-        # 音量
         self.volume_scale = tk.Scale(
             root, from_=0, to=100,
             orient=tk.HORIZONTAL,
@@ -61,11 +60,9 @@ class MusicPlayer:
         self.volume_scale.set(self.volume)
         self.volume_scale.pack()
 
-        # 播放時間顯示
         self.current_time_label = tk.Label(root, text="00:00 / 00:00")
         self.current_time_label.pack(pady=5)
 
-        # 進度條（動態長度）
         self.progress_var = tk.IntVar(value=0)
         self.progress_scale = tk.Scale(
             root,
@@ -99,7 +96,6 @@ class MusicPlayer:
         pygame.mixer.music.load(path)
         pygame.mixer.music.play()
 
-        # 取得歌曲長度
         sound = pygame.mixer.Sound(path)
         self.song_length_sec = int(sound.get_length())
 

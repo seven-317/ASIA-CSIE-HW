@@ -23,7 +23,6 @@ class MusicPlayer:
         self.seek_offset_sec = 0
         self.is_paused = False
 
-        # 歌曲清單
         self.song_listbox = tk.Listbox(root)
         self.song_listbox.pack(pady=5)
         self.song_listbox.bind("<<ListboxSelect>>", self.on_song_select)
@@ -37,7 +36,6 @@ class MusicPlayer:
 
         tk.Button(root, text="Stop", command=self.stop_music).pack()
 
-        # ★ NEW：上一首 / 下一首
         tk.Button(root, text="Previous", command=self.prev_song).pack(pady=2)
         tk.Button(root, text="Next", command=self.next_song).pack(pady=2)
 
@@ -119,7 +117,6 @@ class MusicPlayer:
         self.is_paused = False
         self.pause_button.config(text="Pause")
 
-    # ★ NEW：上一首
     def prev_song(self):
         if not self.playlist:
             return
@@ -141,7 +138,6 @@ class MusicPlayer:
         self.is_paused = False
         self.pause_button.config(text="Pause")
 
-    # ★ NEW：下一首
     def next_song(self):
         if not self.playlist:
             return

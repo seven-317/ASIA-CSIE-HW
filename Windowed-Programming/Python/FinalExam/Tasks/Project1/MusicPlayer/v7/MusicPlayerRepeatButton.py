@@ -23,14 +23,10 @@ class MusicPlayer:
         self.seek_offset_sec = 0
         self.is_paused = False
 
-        # ★ 重複播放模式
-        # 0: 不重複, 1: 單曲重複, 2: 清單重複
         self.repeat_mode = 0
 
-        # ★ 用來判斷「是否剛剛在播放」
         self.was_playing = False
 
-        # 歌曲清單
         self.song_listbox = tk.Listbox(root)
         self.song_listbox.pack(pady=5)
         self.song_listbox.bind("<<ListboxSelect>>", self.on_song_select)
@@ -47,7 +43,6 @@ class MusicPlayer:
         tk.Button(root, text="Previous", command=self.prev_song).pack(pady=2)
         tk.Button(root, text="Next", command=self.next_song).pack(pady=2)
 
-        # 重複播放模式切換
         self.repeat_button = tk.Button(
             root, text="Repeat: Off", command=self.toggle_repeat_mode
         )
@@ -201,7 +196,6 @@ class MusicPlayer:
     def update_progress(self):
         is_playing = pygame.mixer.music.get_busy()
 
-        # ★ 偵測「播放結束」
         if self.was_playing and not is_playing and not self.is_paused:
             self.handle_music_end()
 

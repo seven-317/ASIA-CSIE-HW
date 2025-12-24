@@ -11,7 +11,6 @@ class MusicPlayer:
         self.root.geometry("800x500")
         self.root.resizable(False, False)
 
-        # ===== 播放狀態 =====
         self.playlist = []
         self.current_song_idx = 0
         self.seek_offset_sec = 0
@@ -23,18 +22,12 @@ class MusicPlayer:
         pygame.mixer.init()
         pygame.mixer.music.set_volume(0.5)
 
-        # =========================
-        # Spotify 版面結構（Step 1）
-        # =========================
-
         main_frame = tk.Frame(root)
         main_frame.pack(fill="both", expand=True)
 
-        # 上半部
         top_frame = tk.Frame(main_frame)
         top_frame.pack(fill="both", expand=True)
 
-        # 左側 Sidebar（歌單）
         sidebar_frame = tk.Frame(top_frame, width=200)
         sidebar_frame.pack(side="left", fill="y")
 
@@ -42,7 +35,6 @@ class MusicPlayer:
         self.song_listbox.pack(fill="both", expand=True, padx=5, pady=5)
         self.song_listbox.bind("<<ListboxSelect>>", self.on_song_select)
 
-        # 右側 Content（播放資訊）
         content_frame = tk.Frame(top_frame)
         content_frame.pack(side="left", fill="both", expand=True)
 
@@ -53,14 +45,9 @@ class MusicPlayer:
         )
         self.current_time_label.pack(pady=40)
 
-        # =========================
-        # 底部播放器（Bottom Bar）
-        # =========================
-
         player_frame = tk.Frame(main_frame)
         player_frame.pack(fill="x")
 
-        # 控制列
         control_frame = tk.Frame(player_frame)
         control_frame.pack(pady=5)
 
@@ -73,7 +60,6 @@ class MusicPlayer:
         )
         self.pause_button.pack(side="left", padx=6)
 
-        # ✅ Stop（作業要求，不能刪）
         tk.Button(
             control_frame, text="Stop", command=self.stop_music
         ).pack(side="left", padx=6)
@@ -83,7 +69,6 @@ class MusicPlayer:
         )
         self.repeat_button.pack(side="left", padx=6)
 
-        # 進度條
         self.progress_var = tk.IntVar(value=0)
         self.progress_scale = tk.Scale(
             player_frame,
@@ -117,7 +102,7 @@ class MusicPlayer:
 
         self.update_progress()
 
-    # ================= 播放邏輯 =================
+    # ---------------- 播放邏輯 ----------------
 
     def load_song(self, path):
         pygame.mixer.music.stop()
@@ -184,7 +169,7 @@ class MusicPlayer:
             text=["Repeat: Off", "Repeat: One", "Repeat: All"][self.repeat_mode]
         )
 
-    # ================= 清單 =================
+    # ---------------- 清單 ----------------
 
     def add_song(self):
         path = filedialog.askopenfilename(filetypes=[("MP3 files", "*.mp3")])
@@ -198,7 +183,7 @@ class MusicPlayer:
         self.current_song_idx = self.song_listbox.curselection()[0]
         self.load_song(self.playlist[self.current_song_idx])
 
-    # ================= 進度與時間 =================
+    # ---------------- 進度與時間 ----------------
 
     def update_time_label(self, sec):
         m, s = divmod(sec, 60)
